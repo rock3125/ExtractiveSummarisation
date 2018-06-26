@@ -12,7 +12,7 @@ public class Main {
 
         String text = new String(Files.readAllBytes(Paths.get("romeo_and_juliet.txt")));
         Summarise summarise = new Summarise();
-        List<Sentence> sentenceList = summarise.summarize(text, 50);
+        List<Sentence> sentenceList = summarise.summarize(text, 50, true);
         if (sentenceList != null) {
             for (Sentence sentence : sentenceList) {
                 System.out.println(sentence.toString());
