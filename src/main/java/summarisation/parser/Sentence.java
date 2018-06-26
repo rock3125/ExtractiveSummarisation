@@ -41,7 +41,7 @@ public class Sentence {
     public String toString() {
         StringBuilder sb = new StringBuilder();
         for (Token token : tokenList) {
-            sb.append(token.getText()).append("/").append(token.getTag());
+            sb.append(token.getText());
             sb.append(" ");
         }
         return sb.toString().trim();
