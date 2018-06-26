@@ -5,6 +5,10 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * Simple holder of a word and its frequency
+ *
+ */
 public class SummaryFrequencyWord implements Comparable<SummaryFrequencyWord> {
 
     private String word;
@@ -17,6 +21,7 @@ public class SummaryFrequencyWord implements Comparable<SummaryFrequencyWord> {
 
     /**
      * turn a map of frequency items into a list of highest ranking frequency words
+     *
      * @param map the map to process
      * @param topN how many items to return max (must be > 0)
      * @return the top N summary frequency word items in a list
@@ -62,3 +67,4 @@ public class SummaryFrequencyWord implements Comparable<SummaryFrequencyWord> {
     }
 
 }
+

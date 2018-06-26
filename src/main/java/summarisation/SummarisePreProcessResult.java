@@ -6,6 +6,10 @@ import summarisation.parser.Token;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * temporary results from the pre-processing stage
+ *
+ */
 public class SummarisePreProcessResult {
 
     // the original sentences
@@ -74,3 +78,4 @@ public class SummarisePreProcessResult {
         this.originalSentenceList = originalSentenceList;
     }
 }
+

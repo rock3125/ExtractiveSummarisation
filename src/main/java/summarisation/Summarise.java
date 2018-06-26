@@ -8,10 +8,16 @@ import summarisation.parser.Undesirables;
 import java.io.IOException;
 import java.util.*;
 
+/**
+ * Extractive Summarization of text - simple algorithm that scores texts
+ * based on position in story, numbers, proper nouns, thematic relationships between title and sentences,
+ * cosine relationships between sentences, and themes based on frequencies
+ *
+ */
 public class Summarise {
 
-    private Undesirables undesirables;  // stop words
-    private StanfordParser parser; // parsing things
+    private Undesirables undesirables;  // stop word detector
+    private StanfordParser parser; // stanford parser for tagging and sentence boundary detection
 
 
     public Summarise() {
@@ -90,6 +96,13 @@ public class Summarise {
         return null;
     }
 
+    /**
+     * given the processed results (parsed data) - apply the scoring algorithms across all sentences
+     *
+     * @param results the pre-processing results ready to be processed
+     * @return a list of scores, one for each sentence - additive between the different algorithms applied,
+     *         the highest score is assumed to be the most relevant / representative sentence
+     */
     private List<Float> scoreSentences(SummarisePreProcessResult results) throws IOException {
 
         if (results == null)
@@ -120,9 +133,10 @@ public class Summarise {
         for (int i = 0; i < sentenceList.size(); i++)
             resultMap.put(i, resultMap.get(i) + sentencePos.get(i));
 
-        List<Float> sentenceSim = getSentenceSimilarity(sentenceList);
-        for (int i = 0; i < sentenceList.size(); i++)
-            resultMap.put(i, resultMap.get(i) + sentenceSim.get(i));
+        // O(n2) - very expensive to run
+//        List<Float> sentenceSim = getSentenceSimilarity(sentenceList);
+//        for (int i = 0; i < sentenceList.size(); i++)
+//            resultMap.put(i, resultMap.get(i) + sentenceSim.get(i));
 
         List<Float> properNouns = getProperNounFeatures(sentenceList);
         for (int i = 0; i < sentenceList.size(); i++)
@@ -321,6 +335,13 @@ public class Summarise {
         return 0.0f;
     }
 
+    /**
+     * this is a cosine similarity measurement between sentences among each other
+     * O(n2) - careful
+     *
+     * @param sentenceList the list of sentences to apply the algorithm to
+     * @return a list of values identifying similarities between other sentences overall
+     */
     private List<Float> getSentenceSimilarity(List<Sentence> sentenceList) {
         List<Float> sentenceFeatures = new ArrayList<>();
         float maxS = 0.0f;

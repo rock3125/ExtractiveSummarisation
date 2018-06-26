@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+/**
+ * sentence sorting by both index and scoring after algorithm completes
+ *
+ */
 public class SummariseSentenceScore implements Comparable<SummariseSentenceScore> {
 
     private Sentence sentence;  // the sentence held
@@ -22,6 +26,7 @@ public class SummariseSentenceScore implements Comparable<SummariseSentenceScore
 
     /**
      * generate the sorted summary
+     *
      * @param sentenceList the sentences
      * @param scoreList the scores of these sentences
      * @param topN the top n items to return
@@ -91,3 +96,4 @@ public class SummariseSentenceScore implements Comparable<SummariseSentenceScore
     }
 
 }
+
