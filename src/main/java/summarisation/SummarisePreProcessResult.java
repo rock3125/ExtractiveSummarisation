@@ -1,12 +1,14 @@
 package summarisation;
 
+import summarisation.parser.Sentence;
+
 import java.util.List;
 import java.util.Map;
 
 public class SummarisePreProcessResult {
 
     // stop words removed and words stemmed
-    private List<List<String>> tokenizedSentenceList;
+    private List<Sentence> tokenizedSentenceList;
 
     // word (no stop words) -> frequency of that word
     private Map<String, Integer> wordCount;
@@ -14,14 +16,17 @@ public class SummarisePreProcessResult {
     // the longest sentence size
     private int longestSentence;
 
-    public SummarisePreProcessResult() {
+    public SummarisePreProcessResult(List<Sentence> tokenizedSentenceList, Map<String, Integer> wordCount, int longestSentence) {
+        this.tokenizedSentenceList = tokenizedSentenceList;
+        this.wordCount = wordCount;
+        this.longestSentence = longestSentence;
     }
 
-    public List<List<String>> getTokenizedSentenceList() {
+    public List<Sentence> getTokenizedSentenceList() {
         return tokenizedSentenceList;
     }
 
-    public void setTokenizedSentenceList(List<List<String>> tokenizedSentenceList) {
+    public void setTokenizedSentenceList(List<Sentence> tokenizedSentenceList) {
         this.tokenizedSentenceList = tokenizedSentenceList;
     }
 
