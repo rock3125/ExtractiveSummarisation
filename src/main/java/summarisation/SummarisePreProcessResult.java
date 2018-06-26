@@ -1,6 +1,7 @@
 package summarisation;
 
 import summarisation.parser.Sentence;
+import summarisation.parser.Token;
 
 import java.util.List;
 import java.util.Map;
@@ -16,10 +17,16 @@ public class SummarisePreProcessResult {
     // the longest sentence size
     private int longestSentence;
 
-    public SummarisePreProcessResult(List<Sentence> tokenizedSentenceList, Map<String, Integer> wordCount, int longestSentence) {
+    // the title of this document
+    private List<Token> title;
+
+
+    public SummarisePreProcessResult(List<Sentence> tokenizedSentenceList, Map<String, Integer> wordCount,
+                                     int longestSentence, List<Token> title) {
         this.tokenizedSentenceList = tokenizedSentenceList;
         this.wordCount = wordCount;
         this.longestSentence = longestSentence;
+        this.title = title;
     }
 
     public List<Sentence> getTokenizedSentenceList() {
@@ -46,4 +53,11 @@ public class SummarisePreProcessResult {
         this.longestSentence = longestSentence;
     }
 
+    public List<Token> getTitle() {
+        return title;
+    }
+
+    public void setTitle(List<Token> title) {
+        this.title = title;
+    }
 }

@@ -21,6 +21,23 @@ public class Summarise {
     }
 
     /**
+     * perform a text summarization
+     *
+     * @param text the text to summary
+     * @param topN the top scoring item count to return
+     * @return if valid a top list of n sentences
+     */
+    public List<Sentence> summarize(String text, int topN) throws IOException {
+        SummarisePreProcessResult result = preProcessText(text);
+        if (result != null) {
+            List<Sentence> sentenceList = result.getTokenizedSentenceList();
+            List<Float> sentenceScoreList = scoreSentences(result);
+            return SummariseSentenceScore.getTopN(sentenceList, sentenceScoreList, topN);
+        }
+        return null;
+    }
+
+    /**
      * pre-process all the text - return a summary of the word frequencies and the parsed text itself
      *
      * @param text the text to process
@@ -52,7 +69,64 @@ public class Summarise {
                 }
             }
         }
-        return new SummarisePreProcessResult(finalSentenceList, frequencyMap, longestSentence);
+        if (finalSentenceList.size() > 0) {
+            List<Token> title = finalSentenceList.get(0).getTokenList();
+            return new SummarisePreProcessResult(finalSentenceList, frequencyMap, longestSentence, title);
+        }
+        return null;
+    }
+
+    private List<Float> scoreSentences(SummarisePreProcessResult results) throws IOException {
+
+        if (results == null)
+            return null;
+
+        List<Sentence> sentenceList = results.getTokenizedSentenceList();
+        List<Token> title = results.getTitle();
+        int longestSentence = results.getLongestSentence();
+        Map<String, Integer> wordCount = results.getWordCount();
+
+        Map<Integer, Float> resultMap = new HashMap<>();
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, 0.0f);
+
+        List<Float> titleFeatures = getTitleFeatures(sentenceList, title);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + titleFeatures.get(i));
+
+        List<Float> sentenceLength = getSentenceLengthFeatures(sentenceList, longestSentence);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + sentenceLength.get(i));
+
+        List<Float> tfifs = getTfIsf(sentenceList, wordCount);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + tfifs.get(i));
+
+        List<Float> sentencePos = getSentencePositionRating(sentenceList, sentenceList.size() / 4);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + sentencePos.get(i));
+
+        List<Float> sentenceSim = getSentenceSimilarity(sentenceList);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + sentenceSim.get(i));
+
+        List<Float> properNouns = getProperNounFeatures(sentenceList);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + properNouns.get(i));
+
+        List<Float> thematicWords = getThematicFeatures(sentenceList, wordCount, 10);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + thematicWords.get(i));
+
+        List<Float> numericData = getNumericalFeatures(sentenceList);
+        for (int i = 0; i < sentenceList.size(); i++)
+            resultMap.put(i, resultMap.get(i) + numericData.get(i));
+
+        List<Float> sentenceRatingList = new ArrayList<>();
+        for (int i = 0; i < sentenceList.size(); i++) {
+            sentenceRatingList.add(resultMap.get(i));
+        }
+        return sentenceRatingList;
     }
 
     /**
@@ -146,15 +220,24 @@ public class Summarise {
                 largest = w;
             }
         }
-        // normalize?
+        return normalize(sentenceFeatures, largest);
+    }
+
+    /**
+     * normalize list if largest > 0.0 using largest
+     * @param list the list to normalize
+     * @param largest the normalization max value
+     * @return a new list or the old list if largest == 0.0
+     */
+    private List<Float> normalize(List<Float> list, float largest) {
         if (largest > 0.0f) {
             List<Float> finalSentenceFeatures = new ArrayList<>();
-            for (float value : sentenceFeatures) {
+            for (float value : list) {
                 finalSentenceFeatures.add(value / largest);
             }
             return finalSentenceFeatures;
         }
-        return sentenceFeatures;
+        return list;
     }
 
 
@@ -171,6 +254,162 @@ public class Summarise {
             if (n > 0.0f) {
                 sentenceFeatures.add(n / numToRank);
                 n -= 1.0f;
+            } else {
+                sentenceFeatures.add(0.0f);
+            }
+        }
+        return sentenceFeatures;
+    }
+
+    /**
+     * map a sentence into frequency items
+     * @param sentence the sentence to map
+     * @return the words and their frequencies
+     */
+    private Map<String, Integer> map(Sentence sentence) {
+        Map<String, Integer> result = new HashMap<>();
+        for (Token token : sentence.getTokenList()) {
+            String lemma = token.getLemma();
+            if (!result.containsKey(lemma)) {
+                result.put(lemma, 1);
+            } else {
+                result.put(lemma, result.get(lemma) + 1);
+            }
+        }
+        return result;
+    }
+
+    /**
+     * perform a frequency cosine map between s1 and s2
+     * @param s1 sentence set 1 of words with frequencies
+     * @param s2 sentence set 2 of words with frequencies
+     * @return the cosine similarity between s1 and s2
+     */
+    private float getCosine(Map<String, Integer> s1, Map<String, Integer> s2) {
+        float numerator = 0.0f;
+        for (String key1 : s1.keySet()) {
+            if (s2.containsKey(key1)) {
+                numerator += s1.get(key1) * s2.get(key1);
+            }
+        }
+        float sum1 = 0.0f;
+        for (float v1 : s1.values()) {
+            sum1 += v1 * v1;
+        }
+        float sum2 = 0.0f;
+        for (float v2 : s2.values()) {
+            sum2 += v2 * v2;
+        }
+        float denominator = (float)(Math.sqrt(sum1) + Math.sqrt(sum2));
+        if (denominator > 0.0f) {
+            return numerator / denominator;
+        }
+        return 0.0f;
+    }
+
+    private List<Float> getSentenceSimilarity(List<Sentence> sentenceList) {
+        List<Float> sentenceFeatures = new ArrayList<>();
+        float maxS = 0.0f;
+        for (int i = 0; i < sentenceList.size(); i++) {
+            float s = 0.0f;
+            for (int j = 0; j < sentenceList.size(); j++) {
+                if (i != j) {
+                    s += getCosine(map(sentenceList.get(i)), map(sentenceList.get(j)));
+                }
+            }
+            sentenceFeatures.add(s);
+            if (s > maxS) {
+                maxS = s;
+            }
+        }
+        // normalize?
+        return normalize(sentenceFeatures, maxS);
+    }
+
+
+    /**
+     * get frequencies for the proper nouns in each sentence
+     * @param sentenceList the sentences to check
+     * @return a list of proper noun weightings
+     */
+    private List<Float> getProperNounFeatures(List<Sentence> sentenceList) {
+        List<Float> sentenceFeatures = new ArrayList<>();
+        for (Sentence sentence : sentenceList) {
+            float count = 0.0f;
+            for (Token token : sentence.getTokenList()) {
+                if (token.getTag().compareToIgnoreCase("NNP") == 0 ||
+                        token.getTag().compareToIgnoreCase("NNPS") == 0) {
+                    count += 1.0f;
+                }
+            }
+            if (sentence.getTokenList().size() > 0) {
+                sentenceFeatures.add(count / (float)sentence.getTokenList().size());
+            } else {
+                sentenceFeatures.add(0.0f);
+            }
+        }
+        return sentenceFeatures;
+    }
+
+
+    /**
+     * get thematic (i.e. high frequency) features judgements for sentences
+     * @param sentenceList the sentences to consider
+     * @param wordCount the existing frequency map of all items
+     * @param top the top-n items to score on (a count)
+     * @return a list of values for each sentence
+     */
+    private List<Float> getThematicFeatures(List<Sentence> sentenceList, Map<String, Integer> wordCount, int top) {
+        // grab the top x thematic words
+        Set<String> thematicWords = new HashSet<>(SummaryFrequencyWord.getTopN(wordCount, top));
+
+        float maxCount = 0.0f;
+        List<Float> sentenceFeatures = new ArrayList<>();
+        for (Sentence sentence : sentenceList) {
+            float count = 0.0f;
+            for (Token token : sentence.getTokenList()) {
+                if (thematicWords.contains(token.getLemma())) {
+                    count += 1.0f;
+                }
+            }
+            sentenceFeatures.add(count);
+            if (count > maxCount) {
+                maxCount = count;
+            }
+        }
+        return normalize(sentenceFeatures, maxCount);
+    }
+
+    // helper: is str a number (1231244) but not a float
+    private boolean isNumber(String str) {
+        if (str.trim().length() > 0) {
+            char[] data = str.toCharArray();
+            for (char ch : data) {
+                if (!(ch >= '0' && ch <= '9')) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * get sentences that have numbers in them
+     * @param sentenceList the list
+     * @return a feature set for this sentence
+     */
+    private List<Float> getNumericalFeatures(List<Sentence> sentenceList) {
+        List<Float> sentenceFeatures = new ArrayList<>();
+        for (Sentence sentence : sentenceList) {
+            float count = 0.0f;
+            for (Token token : sentence.getTokenList()) {
+                if (isNumber(token.getLemma())) {
+                    count += 1.0f;
+                }
+            }
+            if (sentence.getTokenList().size() > 0) {
+                sentenceFeatures.add(count);
             } else {
                 sentenceFeatures.add(0.0f);
             }
