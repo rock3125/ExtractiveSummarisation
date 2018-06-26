@@ -11,7 +11,7 @@ gradle clean build
 This setups a distributable `jar` with executable script and all relevant libraries in `dist/`
 ```
 cd dist
-./summarize.sh ../resources/test/romeo_and_juliet.txt 10
+./summarize.sh resources/test/romeo_and_juliet.txt 10
 ```
 output
 ```
