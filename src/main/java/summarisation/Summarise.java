@@ -21,18 +21,21 @@ public class Summarise {
     }
 
     /**
-     * perform a text summarization
+     * perform a text summarization - assumes first line of book is the "title" (And will add a full stop to this line)
      *
      * @param text the text to summary
      * @param topN the top scoring item count to return
+     * @param sortBySentenceAfterTopN resort by story order after topN have been cut-off
      * @return if valid a top list of n sentences
      */
-    public List<Sentence> summarize(String text, int topN) throws IOException {
-        SummarisePreProcessResult result = preProcessText(text);
-        if (result != null) {
-            List<Sentence> sentenceList = result.getTokenizedSentenceList();
-            List<Float> sentenceScoreList = scoreSentences(result);
-            return SummariseSentenceScore.getTopN(sentenceList, sentenceScoreList, topN);
+    public List<Sentence> summarize(String text, int topN, boolean sortBySentenceAfterTopN) throws IOException {
+        if (topN > 0) {
+            SummarisePreProcessResult result = preProcessText(text);
+            if (result != null) {
+                List<Sentence> sentenceList = result.getTokenizedSentenceList();
+                List<Float> sentenceScoreList = scoreSentences(result);
+                return SummariseSentenceScore.getTopN(result.getOriginalSentenceList(), sentenceScoreList, topN, sortBySentenceAfterTopN);
+            }
         }
         return null;
     }
@@ -44,6 +47,15 @@ public class Summarise {
      * @return the pre processing results for this text
      */
     private SummarisePreProcessResult preProcessText(String text) throws IOException {
+        // split the title "cleverly"
+        String[] parts = text.split("\n");
+        parts[0] += ".";
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            sb.append(part).append("\n");
+        }
+        text = sb.toString();
+
         List<Sentence> sentenceList = parser.parse(text);
         Map<String, Integer> frequencyMap = new HashMap<>();
         List<Sentence> finalSentenceList = new ArrayList<>();
@@ -51,27 +63,29 @@ public class Summarise {
         for (Sentence sentence : sentenceList) {
             List<Token> newTokenList = new ArrayList<>();
             for (Token token :sentence.getTokenList()) {
-                if (!undesirables.contains(token.getLemma())) {
+                if (!undesirables.contains(token.getLemma().toLowerCase())) {
                     newTokenList.add(token);
                 }
             }
             if (newTokenList.size() > 0) {
                 for (Token t : newTokenList) {
-                    if (!frequencyMap.containsKey(t.getLemma())) {
-                        frequencyMap.put(t.getLemma(), 1);
+                    String lemma = t.getLemma().toLowerCase();
+                    if (!frequencyMap.containsKey(lemma)) {
+                        frequencyMap.put(lemma, 1);
                     } else {
-                        frequencyMap.put(t.getLemma(), frequencyMap.get(t.getLemma()) + 1);
+                        frequencyMap.put(lemma, frequencyMap.get(lemma) + 1);
                     }
                 }
-                finalSentenceList.add(new Sentence(newTokenList));
-                if (newTokenList.size() > longestSentence) {
-                    longestSentence = newTokenList.size();
-                }
+            }
+            // allow empty sentences to make tokenized match original
+            finalSentenceList.add(new Sentence(newTokenList));
+            if (newTokenList.size() > longestSentence) {
+                longestSentence = newTokenList.size();
             }
         }
         if (finalSentenceList.size() > 0) {
             List<Token> title = finalSentenceList.get(0).getTokenList();
-            return new SummarisePreProcessResult(finalSentenceList, frequencyMap, longestSentence, title);
+            return new SummarisePreProcessResult(sentenceList, finalSentenceList, frequencyMap, longestSentence, title);
         }
         return null;
     }
@@ -139,14 +153,14 @@ public class Summarise {
         // setup a faster lookup
         Set<String> titleLookup = new HashSet<>();
         for (Token token : title) {
-            titleLookup.add(token.getLemma());
+            titleLookup.add(token.getLemma().toLowerCase());
         }
         List<Float> sentenceTitleFeatures = new ArrayList<>();
         for (Sentence sentence : sentenceList) {
             float count = 0.0f;
             if (title.size() > 0) {
                 for (Token token : sentence.getTokenList()) {
-                    if (titleLookup.contains(token.getLemma())) {
+                    if (titleLookup.contains(token.getLemma().toLowerCase())) {
                         count += 1.0f;
                     }
                 }
@@ -182,8 +196,8 @@ public class Summarise {
      * @return the count of the number of sentences token appears in
      */
     private int getWordSentenceCount(List<Sentence> sentenceList, Token token, Map<String, Integer> cache) {
-        if (cache.containsKey(token.getLemma())) {
-            return cache.get(token.getLemma());
+        if (cache.containsKey(token.getLemma().toLowerCase())) {
+            return cache.get(token.getLemma().toLowerCase());
         } else {
             int numSentences = 0;
             for (Sentence sentence : sentenceList) {
@@ -194,7 +208,7 @@ public class Summarise {
                     }
                 }
             }
-            cache.put(token.getLemma(), numSentences);
+            cache.put(token.getLemma().toLowerCase(), numSentences);
             return numSentences;
         }
     }
@@ -213,7 +227,7 @@ public class Summarise {
             float w = 0.0f;
             for (Token token : sentence.getTokenList()) {
                 double n = getWordSentenceCount(sentenceList, token, cache);
-                w += (double)wordCount.get(token.getLemma()) * Math.log(sentenceList.size() / n);
+                w += (double)wordCount.get(token.getLemma().toLowerCase()) * Math.log(sentenceList.size() / n);
             }
             sentenceFeatures.add(w);
             if (w > largest) {
@@ -269,7 +283,7 @@ public class Summarise {
     private Map<String, Integer> map(Sentence sentence) {
         Map<String, Integer> result = new HashMap<>();
         for (Token token : sentence.getTokenList()) {
-            String lemma = token.getLemma();
+            String lemma = token.getLemma().toLowerCase();
             if (!result.containsKey(lemma)) {
                 result.put(lemma, 1);
             } else {
@@ -368,7 +382,7 @@ public class Summarise {
         for (Sentence sentence : sentenceList) {
             float count = 0.0f;
             for (Token token : sentence.getTokenList()) {
-                if (thematicWords.contains(token.getLemma())) {
+                if (thematicWords.contains(token.getLemma().toLowerCase())) {
                     count += 1.0f;
                 }
             }

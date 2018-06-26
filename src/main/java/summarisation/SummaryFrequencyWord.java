@@ -36,10 +36,11 @@ public class SummaryFrequencyWord implements Comparable<SummaryFrequencyWord> {
         return topWordList;
     }
 
+    // highest frequency first sort
     @Override
     public int compareTo(SummaryFrequencyWord o) {
-        if (frequency < o.frequency) return -1;
-        if (frequency > o.frequency) return 1;
+        if (frequency < o.frequency) return 1;
+        if (frequency > o.frequency) return -1;
         return word.compareToIgnoreCase(o.word);
     }
 

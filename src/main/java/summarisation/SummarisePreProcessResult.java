@@ -8,6 +8,9 @@ import java.util.Map;
 
 public class SummarisePreProcessResult {
 
+    // the original sentences
+    private List<Sentence> originalSentenceList;
+
     // stop words removed and words stemmed
     private List<Sentence> tokenizedSentenceList;
 
@@ -21,8 +24,10 @@ public class SummarisePreProcessResult {
     private List<Token> title;
 
 
-    public SummarisePreProcessResult(List<Sentence> tokenizedSentenceList, Map<String, Integer> wordCount,
+    public SummarisePreProcessResult(List<Sentence> originalSentenceList,
+                                     List<Sentence> tokenizedSentenceList, Map<String, Integer> wordCount,
                                      int longestSentence, List<Token> title) {
+        this.originalSentenceList = originalSentenceList;
         this.tokenizedSentenceList = tokenizedSentenceList;
         this.wordCount = wordCount;
         this.longestSentence = longestSentence;
@@ -59,5 +64,13 @@ public class SummarisePreProcessResult {
 
     public void setTitle(List<Token> title) {
         this.title = title;
+    }
+
+    public List<Sentence> getOriginalSentenceList() {
+        return originalSentenceList;
+    }
+
+    public void setOriginalSentenceList(List<Sentence> originalSentenceList) {
+        this.originalSentenceList = originalSentenceList;
     }
 }
