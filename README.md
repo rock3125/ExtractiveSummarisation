@@ -1,4 +1,4 @@
-## Simple Extractive Summarisation
+## Extractive Summarisation
 
 Extractive summarization of text - simple algorithm that scores texts based on position in story, numbers, proper nouns,
 thematic relationships between title and sentences, cosine relationships between sentences, and themes based on frequencies.
