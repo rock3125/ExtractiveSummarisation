@@ -1,17 +1,40 @@
-plugins {
-    id 'java'
+description = 'summarisation'
+
+apply plugin: 'kotlin'
+
+buildscript {
+    repositories {
+        mavenCentral()
+    }
+    dependencies {
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.3.50"
+    }
 }
 
-group 'summarisation'
-version '1.0'
-
-sourceCompatibility = 1.8
+compileKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
+compileTestKotlin {
+    kotlinOptions.jvmTarget = "1.8"
+}
 
 repositories {
     mavenCentral()
+    maven {
+        url "https://dev.bibsonomy.org/maven2/"
+    }
+    maven {
+        url "http://clojars.org/repo/"
+    }
 }
 
+
 dependencies {
+
+    compile "org.jetbrains.kotlin:kotlin-stdlib-jdk8:1.3.50"
+    compile "org.jetbrains.kotlin:kotlin-script-runtime:1.3.50"
+    compile group: 'org.jetbrains.kotlin', name: 'kotlin-reflect', version: '1.3.50'
+
 
     // stanford CoreNLP parser (9x faster than spaCy)
     compile (group: 'edu.stanford.nlp', name: 'stanford-corenlp', version: '3.9.1') {
@@ -19,17 +42,7 @@ dependencies {
     }
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
-}
-
-jar {
-    baseName = 'summarisation'
-    version =  '1.0.0'
-    manifest {
-        attributes(
-                'Class-Path': configurations.compile.collect { it.getName() }.join(' '),
-                'Main-Class': 'summarisation.Main'
-        )
-    }
+    implementation "org.jetbrains.kotlin:kotlin-stdlib"
 }
 
 // setup cmd line system for test deployments

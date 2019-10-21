@@ -4,7 +4,7 @@ Extractive summarization of text - simple algorithm that scores texts based on p
 thematic relationships between title and sentences, cosine relationships between sentences, and themes based on frequencies.
 
 ## Build and test on Ubuntu 16.04 or 18.04
-This Java isn't platform specific, however it was built and tested using Ubuntu.
+This Kotlin isn't platform specific, however it was built and tested using Ubuntu.
 ```
 gradle clean build
 ```
